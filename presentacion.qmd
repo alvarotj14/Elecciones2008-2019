@@ -3,7 +3,6 @@ title: "Análisis Estadístico Elecciones 2008-2019"
 format: revealjs
 editor: visual
 author: Juan Daza, Guillermo Sanz, Álvaro Tortajada
-
 ---
 
 ```{r}
@@ -77,7 +76,9 @@ datos_elecciones_tidy <-
 
 ¿Cómo se reparte el voto de partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU) frente a los partidos de corte autonómico o nacionalista?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 #Ejercicio de gráfica
 ambito_nacional <- c("PSOE", "PP", "VOX", "MP", "UP")
 
@@ -91,7 +92,12 @@ grafico1.1 <-
 datos_elecciones_tidy |>
   group_by(fecha, ambito) |>
   summarise("VotosTotal"=sum(Votos))
+```
 
+---
+
+```{r, echo=TRUE}
+#| code-fold: true
 
 ggplot(grafico1.1, aes(x = as.factor(fecha), y = VotosTotal, fill=ambito)) +
   scale_y_continuous(breaks = seq(0, 25000000, by = 5000000), labels = scales::comma_format(scale = 1e-6)) +
@@ -105,20 +111,24 @@ ggplot(grafico1.1, aes(x = as.factor(fecha), y = VotosTotal, fill=ambito)) +
 
 ¿Cuál el partido ganador en los municipios de más de 100 000 habitantes de censo en cada una de las elecciones?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 datos_elecciones_tidy |> 
   filter(censo > 100000) |>
   group_by(fecha, cod_mun) |> 
   slice_max(Votos, n=1) |>
   select(c(fecha, cod_mun, municipio, siglas))
 ```
-Los resultados varían mayoritariamente entre PP y PSOE aunque aparecen otros de manera muy limitada.
+
 
 ## Ejercicio 3
 
 ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuándo el primero fue el PP?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 grafico3.1 <-
 datos_elecciones_tidy |>
   group_by(fecha, cod_mun) |> 
@@ -142,7 +152,7 @@ pie(grafico3.1$n, labels= grafico3.1$siglas,
 
 ```
 
----
+------------------------------------------------------------------------
 
 ```{r}
 grafico3.2 <-
@@ -170,7 +180,9 @@ pie(grafico3.2$n, labels= grafico3.2$siglas,
 
 ¿En qué municipios de más 2000 habitantes de censo, provincias o autonomías la diferencia entre el ganador y el segundo es más elevada?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 datos_elecciones_tidy |> 
   filter(censo > 2000) |>
   group_by(fecha, cod_mun) |> 
@@ -186,7 +198,9 @@ datos_elecciones_tidy |>
 
 ¿Cuáles son los municipios con mayor porcentaje de votos nulos de España?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 datos_elecciones_tidy |>
   distinct(cod_mun, .keep_all = TRUE) |>
   group_by(cod_mun) |>
@@ -200,7 +214,9 @@ datos_elecciones_tidy |>
 
 ¿En qué sitios hay mayor participación? ¿Quién ganó en los sitios con mayor participación y donde menos? ¿A quién le beneficia la baja participación?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 mas_part <-
 datos_elecciones_tidy |>
   group_by(fecha) |>
@@ -221,9 +237,11 @@ datos_elecciones_tidy |>
 
 ```
 
----
+------------------------------------------------------------------------
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 men_part <-
   datos_elecciones_tidy |>
   group_by(fecha) |>
@@ -279,7 +297,9 @@ ggplot(grafico7.1, aes(x= tamano_censo, y= VotosTotal, fill= siglas)) +
 
 ¿Cómo calibrar el error de las encuestas? ¿Cómo visualizarlo? (recuerda que las encuestas son intención de voto a nivel nacional)
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 encuestas_tidy2 <-
   encuestas_tidy |>
   mutate(Estimación= mean(Estimación), .by = c(siglas, date_elec))
@@ -310,6 +330,13 @@ ejer8 <-
   distinct(siglas, .keep_all = TRUE) |>
   mutate(error= abs(porcentaje-Estimación)) |>
   mutate(siglas= fct_reorder(siglas, error))
+
+```
+
+-----
+
+```{r, echo=TRUE}
+#| code-fold: true
   
 
 ggplot(ejer8, aes(x= siglas, y= error, fill=error)) +
@@ -325,7 +352,9 @@ ggplot(ejer8, aes(x= siglas, y= error, fill=error)) +
 
 ¿En qué elección se equivocaron más las encuestas?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 ejer8 |>
   group_by(fecha) |>
   summarise(error_medio= mean(error))
@@ -336,6 +365,7 @@ ejer8 |>
 ¿Cómo se equivocaron las encuestas en partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU)?
 
 ```{r}
+
 ambito_nacional <- c("PSOE", "PP", "VOX", "MP", "UP")
 ggplot(ejer8 |>
   filter(siglas %in% ambito_nacional), aes(x= siglas, y= error, fill=error)) +
@@ -353,7 +383,9 @@ ggplot(ejer8 |>
 
 ¿Qué casas encuestadores acertaron más y cuales se desviaron más de los resultados?
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 candidatura_total <-        #Reciclada del ejercicio 8 esta función.
   datos_elecciones_tidy |>
   group_by(fecha) |>
@@ -385,6 +417,13 @@ ejer11 <-
   ungroup() |>
   group_by(pollster, siglas) |>
   summarise("MediaErrorPollster"=mean(error))
+```
+
+------
+
+```{r, echo=TRUE}
+#| code-fold: true
+
 
 ggplot(ejer11, aes(x= siglas, y= MediaErrorPollster, fill= MediaErrorPollster)) +
   geom_col(alpha= 0.7, position='dodge') +
@@ -395,11 +434,14 @@ ggplot(ejer11, aes(x= siglas, y= MediaErrorPollster, fill= MediaErrorPollster)) 
   theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle=45, hjust=1))
 ```
----
+
+------------------------------------------------------------------------
 
 Media de error de cada pollster
 
-```{r}
+```{r, echo=TRUE}
+#| code-fold: true
+
 ejer11 |>
   group_by(pollster) |>
   summarise(error_medio= mean(MediaErrorPollster))
