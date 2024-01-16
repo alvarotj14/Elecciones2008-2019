@@ -1,0 +1,406 @@
+---
+title: "Análisis Estadístico Elecciones 2008-2019"
+format: revealjs
+editor: visual
+author: Juan Daza, Guillermo Sanz, Álvaro Tortajada
+
+---
+
+```{r}
+rm(list = ls()) # Borramos variables de environment
+library(tidyverse)
+datos_elecciones <- read_csv(file = "./datos/datos_elecciones_brutos.csv")
+cod_mun <- read_csv(file = "./datos/cod_mun.csv")
+encuestas <- read_csv(file = "./datos/historical_surveys.csv")
+siglas <- read_csv(file = "./datos/siglas.csv")
+```
+
+```{r}
+datos_elecciones_tidy <-
+  datos_elecciones |>
+  pivot_longer(cols= -("tipo_eleccion":"votos_candidaturas"),
+               names_to="Partidos",
+               values_to= "Votos",
+               values_drop_na=TRUE) |>
+  select(-c(tipo_eleccion, vuelta, codigo_distrito_electoral))
+
+encuestas_tidy <-
+  encuestas |>
+  pivot_longer(cols= -("type_survey":"turnout"),
+               names_to= "Partidos",
+               values_to="Estimación",
+               values_drop_na=TRUE) |>
+  filter((year(date_elec))>=2018 & exit_poll==FALSE & size>=750 & 
+           (day(field_date_from)-day(field_date_to))>1) |>
+  mutate(siglas =
+           case_when(str_detect(Partidos, "PARTIDO SOCIALISTA OBRERO|PARTIT DELS SOCIALISTES DE CATALUNYA|PARTIDO DOS SOCIALISTAS DE GALICIA|PSOE") ~ "PSOE",
+                     str_detect(Partidos, "PARTIDO POPULAR|PP") ~ "PP",
+                     str_detect(Partidos, "CIUDADANOS|CIUTADANS|CS") ~ "CS",
+                      str_detect(Partidos, "PODEMOS|PODEM|IU|LOS VERDES|PODEM|EZKER BATUA|UP") ~ "UP",
+                     
+                     str_detect(Partidos, "VOX") ~ "VOX",
+                     str_detect(Partidos,"SORTU|EUSKO ALKARTASUNA|ARALAR| ALTERNATIBA|EH-BILDU")~ "EH-BILDU",
+                     str_detect(Partidos, "COMPROMIS") ~ "COMPROMIS",
+                     str_detect(Partidos, "CONVERGENCIA I UNIO|CIU") ~ "CIU",
+                     str_detect(Partidos, "ESQUERRA|ERC") ~ "ERC",
+                     str_detect(Partidos, "MAS PAIS|MP") ~ "MP",
+                     TRUE ~ "OTROS"))
+
+datos_elecciones_tidy <-
+  datos_elecciones_tidy |>
+  mutate(siglas =
+           case_when(str_detect(Partidos, "PARTIDO SOCIALISTA OBRERO|PARTIT DELS SOCIALISTES DE CATALUNYA|PARTIDO DOS SOCIALISTAS DE GALICIA|PSOE") ~ "PSOE",
+                     str_detect(Partidos, "PARTIDO POPULAR|PP") ~ "PP",
+                     str_detect(Partidos, "CIUDADANOS|CIUTADANS|CS") ~ "CS",
+                      str_detect(Partidos, "PODEMOS|PODEM|IU|LOS VERDES|PODEM|EZKER BATUA|UP") ~ "UP",
+                     
+                     str_detect(Partidos, "VOX") ~ "VOX",
+                     str_detect(Partidos,"SORTU|EUSKO ALKARTASUNA|ARALAR| ALTERNATIBA|EH-BILDU")~ "EH-BILDU",
+                     str_detect(Partidos, "COMPROMIS") ~ "COMPROMIS",
+                     str_detect(Partidos, "CONVERGENCIA I UNIO|CIU") ~ "CIU",
+                     str_detect(Partidos, "ESQUERRA|ERC") ~ "ERC",
+                     str_detect(Partidos, "MAS PAIS|MP") ~ "MP",
+                     TRUE ~ "OTROS"))
+
+library(lubridate)
+library(glue)
+datos_elecciones_tidy <-
+  datos_elecciones_tidy |> 
+  mutate(fecha = ymd(glue("{anno}{mes}01")),
+         cod_mun= glue("{codigo_ccaa}-{codigo_provincia}-{codigo_municipio}"))
+
+datos_elecciones_tidy <- 
+  datos_elecciones_tidy |> left_join(cod_mun, by="cod_mun")
+```
+
+## Ejercicio 1
+
+¿Cómo se reparte el voto de partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU) frente a los partidos de corte autonómico o nacionalista?
+
+```{r}
+#Ejercicio de gráfica
+ambito_nacional <- c("PSOE", "PP", "VOX", "MP", "UP")
+
+datos_elecciones_tidy <-
+  datos_elecciones_tidy |>
+  mutate(ambito= case_when(
+  siglas %in% ambito_nacional ~ "Nacional",
+  TRUE ~ "Autonómico/Nacionalista"))
+
+grafico1.1 <-
+datos_elecciones_tidy |>
+  group_by(fecha, ambito) |>
+  summarise("VotosTotal"=sum(Votos))
+
+
+ggplot(grafico1.1, aes(x = as.factor(fecha), y = VotosTotal, fill=ambito)) +
+  scale_y_continuous(breaks = seq(0, 25000000, by = 5000000), labels = scales::comma_format(scale = 1e-6)) +
+  geom_bar(stat = "identity") +
+  ggthemes::theme_foundation() +
+  labs(x = "Elecciones", y = "Votos en millones") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+## Ejercicio 2
+
+¿Cuál el partido ganador en los municipios de más de 100 000 habitantes de censo en cada una de las elecciones?
+
+```{r}
+datos_elecciones_tidy |> 
+  filter(censo > 100000) |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=1) |>
+  select(c(fecha, cod_mun, municipio, siglas))
+```
+Los resultados varían mayoritariamente entre PP y PSOE aunque aparecen otros de manera muy limitada.
+
+## Ejercicio 3
+
+¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuándo el primero fue el PP?
+
+```{r}
+grafico3.1 <-
+datos_elecciones_tidy |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=2) |>
+  filter(siglas[1]=="PSOE") |>
+  select(c(fecha, cod_mun, municipio, siglas, Votos)) |> #El select ayuda a previsualizar durante la creación del código no es necesario.
+  filter(siglas!="PSOE") |>
+  ungroup() |>
+  group_by(siglas) |>
+  count() |>
+  ungroup()
+
+pal1 <- c("#1E4964", "#FF9E00", "#FFD52C", "#2CFFD5", "#5D5D5D", "#1E49A4", "#850081", "#00FF04")
+
+par(mar = c(1, 1, 1, 1))
+pie(grafico3.1$n, labels= grafico3.1$siglas,
+  col= pal1,
+  main= "Gráfica de Sectores sobre los segundos puestos tras el PSOE",
+  border = "white",
+  edges=9)
+
+```
+
+---
+
+```{r}
+grafico3.2 <-
+datos_elecciones_tidy |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=2) |>
+  filter(siglas[1]=="PP") |>
+  select(c(fecha, cod_mun, municipio, siglas, Votos)) |> #El select ayuda a previsualizar durante la creación del código no es necesario.
+  filter(siglas!="PP") |>
+  ungroup() |>
+  group_by(siglas) |>
+  count() |>
+  ungroup()
+pal2 <- c("#1E4964", "#FF9E00", "#FFD52C", "#2CFFD5", "#5D5D5D", "#FF0C00", "#850081", "#00FF04")
+
+par(mar = c(1, 1, 1, 1))
+pie(grafico3.2$n, labels= grafico3.2$siglas,
+  col= pal2,
+  main= "Gráfica de Sectores sobre los segundos puestos tras el PP",
+  border = "white",
+  edges=9)
+```
+
+## Ejercicio 4
+
+¿En qué municipios de más 2000 habitantes de censo, provincias o autonomías la diferencia entre el ganador y el segundo es más elevada?
+
+```{r}
+datos_elecciones_tidy |> 
+  filter(censo > 2000) |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=2) |>
+  mutate(dif_votos = Votos[1] - Votos[2]) |>
+  distinct(municipio, .keep_all = TRUE) |>
+  select(c(fecha, cod_mun, municipio, dif_votos)) |> ##El select ayuda a previsualizar durante la creación del código no es necesario.
+  ungroup() |>
+  slice_max(dif_votos, n=10)
+```
+
+## Ejercicio 5
+
+¿Cuáles son los municipios con mayor porcentaje de votos nulos de España?
+
+```{r}
+datos_elecciones_tidy |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  group_by(cod_mun) |>
+  mutate(porcentaje_nulo= (sum(votos_nulos)/sum(votos_candidaturas))*100) |>
+  arrange (desc(porcentaje_nulo)) |>
+  head(5) |>
+  select (c(cod_mun, municipio, porcentaje_nulo))
+```
+
+## Ejercicio 6
+
+¿En qué sitios hay mayor participación? ¿Quién ganó en los sitios con mayor participación y donde menos? ¿A quién le beneficia la baja participación?
+
+```{r}
+mas_part <-
+datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(Participacion=participacion_1+participacion_2) |>
+  slice_max(Participacion, n=5) |>
+  ungroup() |>
+  distinct(municipio) |>
+  pull (municipio)
+
+mas_part
+
+datos_elecciones_tidy |>
+  filter(municipio %in% mas_part) |>
+  group_by(fecha, municipio) |>
+  slice_max(Votos, n=1) |>
+  select(fecha, cod_mun, municipio, siglas)
+
+```
+
+---
+
+```{r}
+men_part <-
+  datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(Participacion=participacion_1+participacion_2) |>
+  slice_min(Participacion, n=5) |>
+  ungroup() |>
+  distinct(municipio) |>
+  pull (municipio)
+
+men_part
+
+datos_elecciones_tidy |>
+  filter(municipio %in% men_part) |>
+  group_by(fecha, municipio) |>
+  slice_max(Votos, n=1, with_ties = FALSE) |>
+  select(fecha, cod_mun, municipio, siglas)
+
+```
+
+## Ejercicio 7
+
+¿Cómo analizar la relación entre censo y voto? ¿Es cierto que ciertos partidos ganan lo rural?
+
+```{r}
+datos_elecciones_tidy <- 
+  datos_elecciones_tidy |> 
+  mutate(tamano_censo = case_when(
+    censo < 1000 ~ " Muy Pequeño",
+    censo >= 1000 & censo < 5000 ~ "Pequeño",
+    censo >= 5000 & censo < 10000 ~ "Mediano",
+    censo >= 10000 & censo <50000 ~ "Grande",
+    censo >= 50000 ~ "Muy Grande"))
+
+grafico7.1 <-
+  datos_elecciones_tidy |> 
+  group_by(siglas, tamano_censo) |> 
+  summarise("VotosTotal"= sum(Votos)) |>
+  ungroup()
+
+
+grupo_ordenado <- c('Muy Pequeño', 'Pequeño', 'Mediano', 'Grande', 'Muy Grande')
+pal3 <- c("#1E4964","#FFCE64","#FF9E00", "#2CFFD5", "#FFD52C", "#64FF8A", "#5D5D5D", "#1E49A4", "#FF0C00", "#850081","#00FF04")
+ggplot(grafico7.1, aes(x= tamano_censo, y= VotosTotal, fill= siglas)) +
+  geom_col(alpha= 0.7, position='fill') +
+  scale_x_discrete(labels= grupo_ordenado ) +
+  ggthemes::theme_economist() +
+  scale_fill_manual(values= pal3) +
+  theme(legend.position = "bottom")
+```
+
+## Ejercicio 8
+
+¿Cómo calibrar el error de las encuestas? ¿Cómo visualizarlo? (recuerda que las encuestas son intención de voto a nivel nacional)
+
+```{r}
+encuestas_tidy2 <-
+  encuestas_tidy |>
+  mutate(Estimación= mean(Estimación), .by = c(siglas, date_elec))
+
+candidatura_total <-
+  datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(candidatura_total= sum(votos_candidaturas)) |>
+  distinct(fecha, .keep_all = TRUE) |>
+  select (c(fecha, candidatura_total)) |>
+  filter(year(fecha)==2019)
+
+ejer8 <-
+datos_elecciones_tidy |>
+  filter(year(fecha)==2019) |>
+  mutate(votos_totales = sum(Votos), .by = c(fecha, siglas)) |>
+  left_join(candidatura_total, by="fecha") |>
+  group_by(fecha, siglas) |>
+  mutate(porcentaje= 100* votos_totales/candidatura_total) |>
+  distinct(siglas, .keep_all = TRUE) |>
+  select (c(Partidos:porcentaje))
+  
+ejer8 <-
+  ejer8 |>
+  left_join(encuestas_tidy2, by="siglas") |>
+  group_by(fecha) |>
+  distinct(siglas, .keep_all = TRUE) |>
+  mutate(error= abs(porcentaje-Estimación)) |>
+  mutate(siglas= fct_reorder(siglas, error))
+  
+
+ggplot(ejer8, aes(x= siglas, y= error, fill=error)) +
+  geom_col(alpha= 0.7, position='dodge') +
+  theme_gray() +
+  facet_grid(~fecha) +
+  scale_fill_gradient2(low = "#60B64F", mid= "#FAFF5F", high = "#FF665F", midpoint = 2.5) +
+  theme(legend.position = "bottom") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+## Ejercicio 9
+
+¿En qué elección se equivocaron más las encuestas?
+
+```{r}
+ejer8 |>
+  group_by(fecha) |>
+  summarise(error_medio= mean(error))
+```
+
+## Ejercicio 10
+
+¿Cómo se equivocaron las encuestas en partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU)?
+
+```{r}
+ambito_nacional <- c("PSOE", "PP", "VOX", "MP", "UP")
+ggplot(ejer8 |>
+  filter(siglas %in% ambito_nacional), aes(x= siglas, y= error, fill=error)) +
+  geom_bar(stat="identity", alpha=0.7) +
+  facet_wrap(~fecha) +
+  scale_fill_gradient2(low = "#60B64F", mid= "#FAFF5F", high = "#FF665F", midpoint = 2.2) +
+  ylim(0,4) +
+  ggthemes::theme_economist_white() +
+  labs(x = "Partidos", y = "error/ diferencia(%)") +
+  theme(legend.position = "bottom") +
+  coord_polar(start = 0)
+```
+
+## Ejercicio 11
+
+¿Qué casas encuestadores acertaron más y cuales se desviaron más de los resultados?
+
+```{r}
+candidatura_total <-        #Reciclada del ejercicio 8 esta función.
+  datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(candidatura_total= sum(votos_candidaturas)) |>
+  distinct(fecha, .keep_all = TRUE) |>
+  select (c(fecha, candidatura_total)) |>
+  filter(year(fecha)==2019)
+
+encuestas_tidy3 <-
+  encuestas_tidy |>
+  mutate(Estimación= mean(Estimación), .by = c(siglas, date_elec, pollster))
+
+ejer11 <-
+datos_elecciones_tidy |>
+  filter(year(fecha)==2019) |>
+  mutate(votos_totales = sum(Votos), .by = c(fecha, siglas)) |>
+  left_join(candidatura_total, by="fecha") |>
+  group_by(fecha, siglas) |>
+  mutate(porcentaje= 100* votos_totales/candidatura_total) |>
+  distinct(siglas, .keep_all = TRUE) |>
+  select (c(Partidos:porcentaje))
+
+ejer11 <-
+  ejer11 |>
+  left_join(encuestas_tidy3, by="siglas") |>
+  group_by(fecha) |>
+  mutate(error= abs(porcentaje-Estimación)) |>
+  ungroup() |>
+  group_by(pollster, siglas) |>
+  summarise("MediaErrorPollster"=mean(error))
+
+ggplot(ejer11, aes(x= siglas, y= MediaErrorPollster, fill= MediaErrorPollster)) +
+  geom_col(alpha= 0.7, position='dodge') +
+  ggthemes::scale_fill_colorblind() +
+  theme_minimal() +
+  facet_wrap(~pollster) +
+  scale_fill_gradient2(low = "#60B64F", mid= "#FAFF5F", high = "#FF665F", midpoint = 2.5) +
+  theme(legend.position = "bottom") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+---
+
+Media de error de cada pollster
+
+```{r}
+ejer11 |>
+  group_by(pollster) |>
+  summarise(error_medio= mean(MediaErrorPollster))
+```

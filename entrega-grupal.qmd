@@ -1,0 +1,586 @@
+---
+title: "Entrega grupal"
+author: "Juan Daza (DNI: 05733964-H), Guillermo Sanz (DNI: 1245391-J), Álvaro Tortajada (DNI: 06635393-P)"
+format:
+  html:
+    theme: [style.scss]
+    toc: true
+    toc-location: right
+    toc-title: Índice
+editor: visual
+---
+
+## Instrucciones (leer antes de empezar)
+
+-   Modificad dentro del documento `.qmd` vuestros datos personales (nombres y DNI) ubicados en la cabecera del archivo.
+
+-   Aseguraos, **ANTES de seguir editando** el documento, que el archivo `.qmd` se renderiza correctamente y se genera el `.html` correspondiente en tu carpeta local de tu ordenador.
+
+-   Los chunks (cajas de código) creados están o vacíos o incompletos. Una vez que editeis lo que consideres, debeis ir cambiando cada chunck a `#| eval: true` (o quitarlo directamente) para que se ejecuten.
+
+-   Recordad que puedes ejecutar chunk a chunk con el botón *play* o ejecutar todos los chunk hasta uno dado (con el botón a la izquierda del anterior).
+
+### Paquetes necesarios
+
+> Introduce en el chunk inferior los paquetes que vayas a necesitar
+
+```{r paquetes}
+rm(list = ls()) # Borramos variables de environment
+library(tidyverse)
+```
+
+## Práctica grupal
+
+### Datos
+
+La práctica versará entorno a los **archivos de datos electorales** que ya hemos trabajado, recopilando datos de citas electorales al Congreso de los Diputados de España desde 2008 hasta la actualidad
+
+```{r}
+# NO TOQUES NADA
+datos_elecciones <- read_csv(file = "./datos/datos_elecciones_brutos.csv")
+cod_mun <- read_csv(file = "./datos/cod_mun.csv")
+encuestas <- read_csv(file = "./datos/historical_surveys.csv")
+siglas <- read_csv(file = "./datos/siglas.csv")
+```
+
+Los datos serán los siguientes:
+
+-   `datos_elecciones`: archivo con los datos electorales al Congreso desde 2018 hasta las últimas de 2019.
+
+    -   `tipo_eleccion`: tipo de elección (02 si es elección al congreso)
+    -   `anno`, `mes`: año y mes de las elecciones
+    -   `vuelta`: vuelta electoral (1 si es primera vuelta)
+    -   `codigo_ccaa, codigo_provincia, codigo_municipio, codigo_distrito_electoral`: código de la ccaa, provincia, municipio y distrito electoral.
+    -   `numero_mesas`: número de mesas electorales
+    -   `censo`: censo electoral
+    -   `participacion_1, participacion_2`: participación en el primer avance (14:00) y segundo avance (18:00) antes del cierre de urnas (20:00)
+    -   `votos_blancos`: votos en blanco
+    -   `votos_candidaturas`: votos a papeletas de partidos
+    -   `votos_nulos`: votos nulos
+    -   votos recibidos por cada uno de los partidos
+
+-   `cod_mun`: archivo con los códigos y nombres de cada municipio
+
+-   `siglas`: siglas y nombres asociados a cada partido
+
+-   `encuestas`: tabla de encuestas electorales desde 1982. Algunas de las variables son las siguientes:
+
+    -   `type_survey`: tipo de encuesta (nacional, autonómica, etc)
+    -   `date_elec`: fecha de las futuras elecciones
+    -   `id_pollster`, `pollster`, `media`: identificador y nombre de la casa encuestadora, así como el medio que lo haya encargado
+    -   `field_date_from`, `field_date_to`: fecha de inicio y final del trabajo de campo
+    -   `exit_poll`: si se trata de una encuesta a pie de urna o no
+    -   `size`: tamaño muestral
+    -   `turnout`: estimación de la participación
+    -   estimación de intención de voto para los principales partidos
+
+### Objetivos e ítems obligatorios
+
+El objetivo de la entrega es realizar un análisis de los datos electorales, llevando a cabo la depuración, resúmenes y gráficos que consideres, tanto de sus resultaados como del acierto de las encuestas electorales.
+
+En concreto **se deberá trabajar solo en la ventana temporal que comprenden las elecciones desde 2008 hasta las últimas elecciones de 2019**.
+
+#### Indicaciones generales
+
+Amén de lo que te parezca oportuno ejecutar, serán obligatorios los siguientes ítems:
+
+-   Cada grupo deberá presentar **al menos 48 horas antes un análisis de los datos** en formato `.qmd` y `.html` en modo **diapositivas**, que **serán las que expongan el día de la presentación**.
+
+-   Durante la presentación se **explicará el análisis realizado** de manera que **cada miembro del equipo habla un tiempo similar** y **cada miembro podrá ser preguntado por cualquiera de los pasos**. La nota no tendrá porque ser la misma para todos/as los/as integrantes.
+
+-   Se valorará no solo el contenido sino el continente (estética).
+
+-   Se valorará positivamente que las diapositivas estén alojadas en Github.
+
+-   El objetivo es demostrar que se adquirido el máximo de conocimientos del curso: cuantas más contenido del temario se incluya, mejor.
+
+#### Ítems obligatorios:
+
+-   Se deberá de **convertir los datos a tidydata** cuando proceda.
+
+-   Se deberá **incluir al menos un cruce (join)** entre tablas.
+
+-   Reminder: información = varianza, así que se deberán **retirar columnas que no nos van a aportar nada**.
+
+-   Se deberá usar el **paquete glue y lubridate** en algún momento, así como el paquete **forcats**, **ggplot2** y **plotly**
+
+-   Se deberá usar al menos una vez lo siguiente:
+
+    -   mutate
+    -   summarise
+    -   group_by (o equivalente)
+    -   case_when
+
+-   Tenemos muchísimos partidos que se presentan a las elecciones. Solo nos intereserán los siguientes partidos:
+
+    -   PARTIDO SOCIALISTA OBRERO ESPAÑOL (cuidado: tiene/tuvo federaciones - sucursales - con algún otro nombre)
+    -   PARTIDO POPULAR
+    -   CIUDADANOS (cuidado: tiene/tuvo federaciones - sucursales - con algún otro nombre)
+    -   PARTIDO NACIONALISTA VASCO
+    -   BLOQUE NACIONALISTA GALEGO
+    -   COMPROMÍS
+    -   CONVERGÈNCIA I UNIÓ
+    -   UNIDAS PODEMOS - IU (cuidado que aquí han tenido nombres variados - IU, los verdes, podem, ezker batua, ...- y no siempre han ido juntos, pero aquí los analizaremos juntos
+    -   ESQUERRA REPUBLICANA DE CATALUNYA
+    -   EH - BILDU (son ahora una coalición de partidos formados por Sortu, Eusko Alkartasuna, Aralar, Alternatiba)
+    -   MÁS PAÍS
+    -   VOX7\*
+
+-   Todo lo que no sea alguno de los anteriores partidos deberá ser imputado como "OTROS". Recuerda agregar los datos tras la recodificación anterior.
+
+-   Para las visualizaciones se usarán las siglas de los partidos. El trabajo deberá contener al menos 5 gráficas, de las cuales al menos 3 deben ser tipos de gráficos distintos (ver <https://r-graph-gallery.com/>), todas ellas con un tema personalizado
+
+-   Deberás usar los 4 archivos de datos en algún momento
+
+-   Deberás definir al menos una función propia (que no sea trivial)
+
+-   Deberás descartar obligatoriamente las encuestas que:
+
+    -   hagan referencia a elecciones anteriores a 2018
+    -   que sean a pie de urna
+    -   que tenga un tamaño muestral inferior a 750 o que sea desconocido
+    -   que tengan menos de 1 o menos días de trabajo de campo
+
+-   Deberás responder obligatoriamente a las siguientes preguntas (más las que consideres analizar para distinguirte del resto de equipos, ya sea numérica y/o gráficamente, pudiendo responder con números y/o con gráficos, decidiendo la mejor visualización que consideres.)
+
+    -   ¿Cómo se reparte el voto de partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU) frente a los partidos de corte autonómico o nacionalista?
+    -   ¿Cuál el partido ganador en los municipios de más de 100 000 habitantes de censo en cada una de las elecciones?
+    -   ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuándo el primero fue el PP?
+    -   ¿En qué municipios de más 2000 habitantes de censo, provincias o autonomías la diferencia entre el ganador y el segundo es más elevada?
+    -   ¿Cuáles son los municipios con mayor porcentaje de votos nulos de España?
+    -   ¿En qué sitios hay mayor participación? ¿Quién ganó en los sitios con mayor participación y donde menos? ¿A quién le beneficia la baja participación?
+    -   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que ciertos partidos ganan lo rural?
+    -   ¿Cómo calibrar el error de las encuestas? ¿Cómo visualizarlo? (recuerda que las encuestas son intención de voto a nivel nacional)
+    -   ¿En qué elección se equivocaron más las encuestas?
+    -   ¿Cómo se equivocaron las encuestas en partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU)
+    -   ¿Qué casas encuestadores acertaron más y cuales se desviaron más de los resultados?
+
+#### Calificación
+
+**No se valorará más al que más cosas haga**. Más no siempre es mejor. Se valorará la **originalidad** (respecto al resto de trabajos, por ejemplo en lo analizado o en el tema o ...) de lo planteado, tanto en manejo de tablas como en visualización, el **cariño** puesto en la entrega (el cariño en la vida es importante) y la **pertinencia** de lo realizado. Una vez que tengáis los ítems obligatorios con tu base de datos más o menos completada, **piensa antes** de ponerte a picar código: ¿qué puede ser interesante? ¿Qué necesito para poder obtener un resumen tanto numérico tanto visual?
+
+Recordad que el fin real es demostrarme un dominio de las herramientas vistas a lo largo del curso. Y eso pasa no solo por la cantidad de ellas utilizadas sino por la calidad al ejecutarlas.
+
+#### Tidydata
+
+```{r}
+datos_elecciones_tidy <-
+  datos_elecciones |>
+  pivot_longer(cols= -("tipo_eleccion":"votos_candidaturas"),
+               names_to="Partidos",
+               values_to= "Votos",
+               values_drop_na=TRUE) |>
+  select(-c(tipo_eleccion, vuelta, codigo_distrito_electoral))
+
+encuestas_tidy <-
+  encuestas |>
+  pivot_longer(cols= -("type_survey":"turnout"),
+               names_to= "Partidos",
+               values_to="Estimación",
+               values_drop_na=TRUE) |>
+  filter((year(date_elec))>=2018 & exit_poll==FALSE & size>=750 & 
+           (day(field_date_from)-day(field_date_to))>1) |>
+  mutate(siglas =
+           case_when(str_detect(Partidos, "PARTIDO SOCIALISTA OBRERO|PARTIT DELS SOCIALISTES DE CATALUNYA|PARTIDO DOS SOCIALISTAS DE GALICIA|PSOE") ~ "PSOE",
+                     str_detect(Partidos, "PARTIDO POPULAR|PP") ~ "PP",
+                     str_detect(Partidos, "CIUDADANOS|CIUTADANS|CS") ~ "CS",
+                      str_detect(Partidos, "PODEMOS|PODEM|IU|LOS VERDES|PODEM|EZKER BATUA|UP") ~ "UP",
+                     
+                     str_detect(Partidos, "VOX") ~ "VOX",
+                     str_detect(Partidos,"SORTU|EUSKO ALKARTASUNA|ARALAR| ALTERNATIBA|EH-BILDU")~ "EH-BILDU",
+                     str_detect(Partidos, "COMPROMIS") ~ "COMPROMIS",
+                     str_detect(Partidos, "CONVERGENCIA I UNIO|CIU") ~ "CIU",
+                     str_detect(Partidos, "ESQUERRA|ERC") ~ "ERC",
+                     str_detect(Partidos, "MAS PAIS|MP") ~ "MP",
+                     TRUE ~ "OTROS"))
+
+datos_elecciones_tidy <-
+  datos_elecciones_tidy |>
+  mutate(siglas =
+           case_when(str_detect(Partidos, "PARTIDO SOCIALISTA OBRERO|PARTIT DELS SOCIALISTES DE CATALUNYA|PARTIDO DOS SOCIALISTAS DE GALICIA|PSOE") ~ "PSOE",
+                     str_detect(Partidos, "PARTIDO POPULAR|PP") ~ "PP",
+                     str_detect(Partidos, "CIUDADANOS|CIUTADANS|CS") ~ "CS",
+                      str_detect(Partidos, "PODEMOS|PODEM|IU|LOS VERDES|PODEM|EZKER BATUA|UP") ~ "UP",
+                     
+                     str_detect(Partidos, "VOX") ~ "VOX",
+                     str_detect(Partidos,"SORTU|EUSKO ALKARTASUNA|ARALAR| ALTERNATIBA|EH-BILDU")~ "EH-BILDU",
+                     str_detect(Partidos, "COMPROMIS") ~ "COMPROMIS",
+                     str_detect(Partidos, "CONVERGENCIA I UNIO|CIU") ~ "CIU",
+                     str_detect(Partidos, "ESQUERRA|ERC") ~ "ERC",
+                     str_detect(Partidos, "MAS PAIS|MP") ~ "MP",
+                     TRUE ~ "OTROS"))
+
+library(lubridate)
+library(glue)
+datos_elecciones_tidy <-
+  datos_elecciones_tidy |> 
+  mutate(fecha = ymd(glue("{anno}{mes}01")),
+         cod_mun= glue("{codigo_ccaa}-{codigo_provincia}-{codigo_municipio}"))
+
+datos_elecciones_tidy <- 
+  datos_elecciones_tidy |> left_join(cod_mun, by="cod_mun")
+```
+
+#### Ejercicio 1
+
+-   ¿Cómo se reparte el voto de partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU) frente a los partidos de corte autonómico o nacionalista?
+
+```{r}
+#Ejercicio de gráfica
+ambito_nacional <- c("PSOE", "PP", "VOX", "MP", "UP")
+
+datos_elecciones_tidy <-
+  datos_elecciones_tidy |>
+  mutate(ambito= case_when(
+  siglas %in% ambito_nacional ~ "Nacional",
+  TRUE ~ "Autonómico/Nacionalista"))
+
+grafico1.1 <-
+datos_elecciones_tidy |>
+  group_by(fecha, ambito) |>
+  summarise("VotosTotal"=sum(Votos))
+
+
+ggplot(grafico1.1, aes(x = as.factor(fecha), y = VotosTotal, fill=ambito)) +
+  scale_y_continuous(breaks = seq(0, 25000000, by = 5000000), labels = scales::comma_format(scale = 1e-6)) +
+  geom_bar(stat = "identity") +
+  ggthemes::theme_foundation() +
+  labs(x = "Elecciones", y = "Votos en millones") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+En el ejercicio 1 se pide comparar el voto de los partidos de ámbito nacional frente a los partidos de ámbito autonómico. Para ello se han agrupado los partidos en los dos grupos correspondientes y se ha generado un gráfico de barras en el que se observa la comparativa a lo largo del tiempo.
+
+Se puede observar como los partidos autonómicos han ido cogiendo fuerza a lo largo del tiempo, con claros repuntes a finales de 2015 y principios de 2019, a pesar de esto son una clara minoría respecto a los partidos de ámbito nacional.
+
+#### Ejercicio 2
+
+-   ¿Cuál el partido ganador en los municipios de más de 100 000 habitantes de censo en cada una de las elecciones?
+
+```{r}
+n_votado <- function(Partidos, Votos, n = 1) {
+  datos <- tibble(Partidos, Votos)
+  siglas <- datos |> 
+    arrange(desc(Votos)) |> 
+    slice(n) |> 
+    pull(Partidos)
+  return(siglas)
+}
+
+datos_elecciones_tidy |> 
+  filter(censo > 100000) |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=1) |>
+  select(c(fecha, cod_mun, municipio, siglas))
+```
+
+Se pide extraer el ganador en los municipios cuyo censo es mayor a 100.000 en cada una de las elecciones, para ello se agrupan los datos en función de la fecha y el municipio, luego se filtran los datos según el censo requerido y se calcula el partido ganador. En los resultados se observa que el PP y el PSOE son los resultados más frecuentes de manera aplastante c aunque existen algunas excepción como Unidas Podemos, Vox u otros.
+
+#### Ejercicio 3
+
+-   ¿Qué partido fue el segundo cuando el primero fue el PSOE? ¿Y cuándo el primero fue el PP?
+
+```{r}
+grafico3.1 <-
+datos_elecciones_tidy |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=2) |>
+  filter(siglas[1]=="PSOE") |>
+  select(c(fecha, cod_mun, municipio, siglas, Votos)) |> #El select ayuda a previsualizar durante la creación del código no es necesario.
+  filter(siglas!="PSOE") |>
+  ungroup() |>
+  group_by(siglas) |>
+  count() |>
+  ungroup()
+
+grafico3.2 <-
+datos_elecciones_tidy |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=2) |>
+  filter(siglas[1]=="PP") |>
+  select(c(fecha, cod_mun, municipio, siglas, Votos)) |> #El select ayuda a previsualizar durante la creación del código no es necesario.
+  filter(siglas!="PP") |>
+  ungroup() |>
+  group_by(siglas) |>
+  count() |>
+  ungroup()
+
+par(mar = c(1, 1, 1, 1))
+pal1 <- c("#1E4964", "#FF9E00", "#FFD52C", "#2CFFD5", "#5D5D5D", "#1E49A4", "#850081", "#00FF04")
+pie(grafico3.1$n, labels= grafico3.1$siglas,
+  col= pal1,
+  main= "Gráfica de Sectores sobre los segundos puestos tras el PSOE",
+  border = "white",
+  edges=9)
+
+par(mar = c(1, 1, 1, 1))
+pal2 <- c("#1E4964", "#FF9E00", "#FFD52C", "#2CFFD5", "#5D5D5D", "#FF0C00", "#850081", "#00FF04")
+pie(grafico3.2$n, labels= grafico3.2$siglas,
+  col= pal2,
+  main= "Gráfica de Sectores sobre los segundos puestos tras el PP",
+  border = "white",
+  edges=9)
+```
+
+En el ejercicio 3 se estudia cuáles son los partidos que han quedado en segundo lugar, en aquellas elecciones que ha ganado el PP y el PSOE en los diferentes municipios proporcionados por la base de datos.
+
+Para ello se ha seleccionado la posición número 2 en función de los votos y se ha filtrado en aquellas cuyo ganador era PP y PSOE. Se ha generado un gráfico diferente para cada uno de los dos casos, en estos se observa que cuando gana el PP el PSOE es el partido que queda en segundo lugar en más ocasiones y viceversa, esto demuestra el bipartidismo que ha existido siempre en la democracia española.
+
+#### Ejercicio 4
+
+-   ¿En qué municipios de más 2000 habitantes de censo, provincias o autonomías la diferencia entre el ganador y el segundo es más elevada?
+
+```{r}
+datos_elecciones_tidy |> 
+  filter(censo > 2000) |>
+  group_by(fecha, cod_mun) |> 
+  slice_max(Votos, n=2) |>
+  mutate(dif_votos = Votos[1] - Votos[2]) |>
+  distinct(municipio, .keep_all = TRUE) |>
+  select(c(fecha, cod_mun, municipio, dif_votos)) |> ##El select ayuda a previsualizar durante la creación del código no es necesario.
+  ungroup() |>
+  slice_max(dif_votos, n=10)
+  
+```
+
+Las mayores diferencias se encuentran en las provincias con mayor censo. Se puede observar que en Madrid, Barcelona y Murcia se dan grandes diferencias en varias elecciones.
+
+Para llegar a estos datos se filtra el censo para poblaciones mayores de 2000 habitantes y se agrupa según la fecha y el código del municipio. Posteriormente se busca quienes son los dos partidos más votados en cada eleccion y se crea una variable que contenga la diferencia de votos de los dos partidos.
+
+#### Ejercicio 5
+
+-   ¿Cuáles son los municipios con mayor porcentaje de votos nulos de España?
+
+```{r}
+datos_elecciones_tidy |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  group_by(cod_mun) |>
+  mutate(porcentaje_nulo= (sum(votos_nulos)/sum(votos_candidaturas))*100) |>
+  arrange (desc(porcentaje_nulo)) |>
+  head(5) |>
+  select (c(cod_mun, municipio, porcentaje_nulo))
+```
+
+Se ha realizado la suma de todos los votos nulos de todas las elecciones para cada municipio para dividirlos entre el total de votos de las candidaturas para calcular el ratio de votos nulos sobre los votos de candidaturas.
+
+Una vez hecho esto se observa los mayores porcentajes de votos nulos se dan en municipios pequeños con poco censo electoral como pueden ser Requena de Campos, Narrillos del Rebollar o Encinsola.
+
+#### Ejercicio 6
+
+-   ¿En qué sitios hay mayor participación? ¿Quién ganó en los sitios con mayor participación y donde menos? ¿A quién le beneficia la baja participación?
+
+```{r}
+mas_part <-
+datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(Participacion=participacion_1+participacion_2) |>
+  slice_max(Participacion, n=5) |>
+  ungroup() |>
+  distinct(municipio) |>
+  pull (municipio)
+
+men_part <-
+  datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(Participacion=participacion_1+participacion_2) |>
+  slice_min(Participacion, n=5) |>
+  ungroup() |>
+  distinct(municipio) |>
+  pull (municipio)
+
+datos_elecciones_tidy |>
+  filter(municipio %in% mas_part) |>
+  group_by(fecha, municipio) |>
+  slice_max(Votos, n=1) |>
+  select(fecha, cod_mun, municipio, siglas)
+
+datos_elecciones_tidy |>
+  filter(municipio %in% men_part) |>
+  group_by(fecha, municipio) |>
+  slice_max(Votos, n=1, with_ties = FALSE) |>
+  select(fecha, cod_mun, municipio, siglas)
+```
+
+En el código se han elegido los 5 partidos con menos participación en cada una de las elecciones, se han eliminado duplicados y se han exportado como vector para su posterior uso. Por eso en el caso de menor participación hay muchos municipios distintos.
+
+Los municipios con mayor participación se caracterizan por ser poblaciones pequeñas con un censo reducido.
+
+La baja participación beneficia totalmente a los partidos políticos regionales o de ámbito local. Habiendo encasillado varios partidos minoritarios con las siglas OTROS, se puede ver que en las zonas donde existe baja participación aparece esta categoria como ganador en muchas ocasiones. En zonas de baja participación los mayores beneficiados son los partidos mayoritarios como pueden ser PP o PSOE.
+
+#### Ejercicio 7
+
+-   ¿Cómo analizar la relación entre censo y voto? ¿Es cierto que ciertos partidos ganan lo rural?
+
+```{r}
+datos_elecciones_tidy <- 
+  datos_elecciones_tidy |> 
+  mutate(tamano_censo = case_when(
+    censo < 1000 ~ " Muy Pequeño",
+    censo >= 1000 & censo < 5000 ~ "Pequeño",
+    censo >= 5000 & censo < 10000 ~ "Mediano",
+    censo >= 10000 & censo <50000 ~ "Grande",
+    censo >= 50000 ~ "Muy Grande"))
+
+grafico7.1 <-
+  datos_elecciones_tidy |> 
+  group_by(siglas, tamano_censo) |> 
+  summarise("VotosTotal"= sum(Votos)) |>
+  ungroup()
+
+
+grupo_ordenado <- c('Muy Pequeño', 'Pequeño', 'Mediano', 'Grande', 'Muy Grande')
+pal3 <- c("#1E4964","#FFCE64","#FF9E00", "#2CFFD5", "#FFD52C", "#64FF8A", "#5D5D5D", "#1E49A4", "#FF0C00", "#850081","#00FF04")
+ggplot(grafico7.1, aes(x= tamano_censo, y= VotosTotal, fill= siglas)) +
+  geom_col(alpha= 0.7, position='fill') +
+  scale_x_discrete(labels= grupo_ordenado ) +
+  ggthemes::theme_economist() +
+  scale_fill_manual(values= pal3) +
+  theme(legend.position = "bottom")
+```
+
+El ejercicio 7 pide analizar la relación entre censo y voto, para ello se han agrupado los municipios en función de su censo, creando 5 categorías diferentes, dentro de estas categorías se ha estudiado la suma de votos para cada partido.
+
+En el gráfico se observa la frecuencia relativa, gracias al position = 'filll', que permite que la escala de las diferentes categorías se pueda comparar.
+
+En cuánto a los resultados observamos que en los municipios muy pequeños el PP es el gran beneficiado, mientras que el PSOE se mantiene bastante lineal en función del censo, en partidos más pequeños como Ciudadanos o Podemos se observa un mayor apoyo en municipios cuyo censo se encuentra en las categorías 'pequeño', 'mediano' y 'grande'. Por otro lado, aparecen más los partidos minoritarios en las zonas con menor población.
+
+#### Ejercicio 8
+
+-   ¿Cómo calibrar el error de las encuestas? ¿Cómo visualizarlo? (recuerda que las encuestas son intención de voto a nivel nacional)
+
+```{r}
+encuestas_tidy2 <-
+  encuestas_tidy |>
+  mutate(Estimación= mean(Estimación), .by = c(siglas, date_elec))
+
+candidatura_total <-
+  datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(candidatura_total= sum(votos_candidaturas)) |>
+  distinct(fecha, .keep_all = TRUE) |>
+  select (c(fecha, candidatura_total)) |>
+  filter(year(fecha)==2019)
+
+ejer8 <-
+datos_elecciones_tidy |>
+  filter(year(fecha)==2019) |>
+  mutate(votos_totales = sum(Votos), .by = c(fecha, siglas)) |>
+  left_join(candidatura_total, by="fecha") |>
+  group_by(fecha, siglas) |>
+  mutate(porcentaje= 100* votos_totales/candidatura_total) |>
+  distinct(siglas, .keep_all = TRUE) |>
+  select (c(Partidos:porcentaje))
+  
+ejer8 <-
+  ejer8 |>
+  left_join(encuestas_tidy2, by="siglas") |>
+  group_by(fecha) |>
+  distinct(siglas, .keep_all = TRUE) |>
+  mutate(error= abs(porcentaje-Estimación)) |>
+  mutate(siglas= fct_reorder(siglas, error))
+  
+
+ggplot(ejer8, aes(x= siglas, y= error, fill=error)) +
+  geom_col(alpha= 0.7, position='dodge') +
+  theme_gray() +
+  facet_grid(~fecha) +
+  scale_fill_gradient2(low = "#60B64F", mid= "#FAFF5F", high = "#FF665F", midpoint = 2.5) +
+  theme(legend.position = "bottom") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+Se ha decidido que una gran opción para visualizar la cantidad de error en general era dividirlo por partidos para posteriormente (ejercicio 9) calcular la media respecto al error de cada año. Para ello se ha calculado la candidatura total de todo el país para cada fecha, los votos totales por partido y se ha realizado una gráfica para visualizarlo.
+
+Para visualizar el error entre el porcentaje de votos estimados y el porcentaje de votos reales, se ha realizado la diferencia entre ambas en vez del error cuadrático medio por que se ha entendido que como el formato ya es de porcentajes la diferencia serviría para ver este error. El porcentaje de votos reales a cada partido se ha calculado sobre la suma de los votos de cada partido entre los votos de candidatura. En el gráfico se puede ver que por razones obvias el error en el apartado otros es mayor ya que se ha englobado una gran cantidad de partidos en esta categoría. Aquí se calcula con la estimación media sin tener en cuenta que casa encuestadora aporta el valor. A nivel general, se puede asumir que el error oscila hasta aproximadamente el 4% de error (sin contar el apartado OTROS). Por otro lado, se han ordenado los del primer gráfico de menor a mayor error y se ha mantenido el orden para el segundo para poder comparar entre las dos elecciones distintas. En las elecciones de abril destacan errores mas altos en Más País y en el PP, mientras que en las de noviembre se observa una gran subida del error respecto a ciudadanos y a Vox.
+
+#### Ejercicio 9
+
+-   ¿En qué elección se equivocaron más las encuestas?
+
+```{r}
+ejer8 |>
+  group_by(fecha) |>
+  summarise(error_medio= mean(error))
+```
+
+Las elecciones de abril a simple vista tienen menos error cometido medio, por lo que se daría por hecho que las de noviembre tienen un error mas pronunciado. Pero gracias a los gráficos realizados anteriormente, se puede realizar un análisis más profundo aunque se llegue a la misma conclusión. Respecto a las elecciones de noviembre se mantienen los errores de la sección OTROS que no se tendra en cuenta y descienden los niveles de error en general, pero se mantiene el de Más País y se dispara por completo el de ciudadanos ocasionando casi el mismo error que el apartado otros. Esto hace que aunque la diferencia de medias del error no sea muy amplia supone una más amplia por la dispersión de los datos respecto a ciudadanos en noviembre.
+
+#### Ejercicio 10
+
+-   ¿Cómo se equivocaron las encuestas en partidos de ámbito nacional (PSOE, PP, VOX, CS, MP, UP - IU)
+
+```{r}
+ambito_nacional <- c("PSOE", "PP", "VOX", "MP", "UP")
+ggplot(ejer8 |>
+  filter(siglas %in% ambito_nacional), aes(x= siglas, y= error, fill=error)) +
+  geom_bar(stat="identity", alpha=0.7) +
+  facet_wrap(~fecha) +
+  scale_fill_gradient2(low = "#60B64F", mid= "#FAFF5F", high = "#FF665F", midpoint = 2.2) +
+  ylim(0,4) +
+  ggthemes::theme_economist_white() +
+  labs(x = "Partidos", y = "error/ diferencia(%)") +
+  theme(legend.position = "bottom") +
+  coord_polar(start = 0)
+```
+
+Este ejercicio se basa simplemente en que con los datos anteriores se realiza un filtro para ver los errores en los partidos nacionales en ambas elecciones. Se ha cambiado el tipo de gráfico a su vez eligiendo esta opción ya que es muy visual.
+
+#### Ejercicio 11
+
+-   ¿Qué casas encuestadores acertaron más y cuales se desviaron más de los resultados?
+
+```{r}
+candidatura_total <-        #Reciclada del ejercicio 8 esta función.
+  datos_elecciones_tidy |>
+  group_by(fecha) |>
+  distinct(cod_mun, .keep_all = TRUE) |>
+  mutate(candidatura_total= sum(votos_candidaturas)) |>
+  distinct(fecha, .keep_all = TRUE) |>
+  select (c(fecha, candidatura_total)) |>
+  filter(year(fecha)==2019)
+
+encuestas_tidy3 <-
+  encuestas_tidy |>
+  mutate(Estimación= mean(Estimación), .by = c(siglas, date_elec, pollster))
+
+ejer11 <-
+datos_elecciones_tidy |>
+  filter(year(fecha)==2019) |>
+  mutate(votos_totales = sum(Votos), .by = c(fecha, siglas)) |>
+  left_join(candidatura_total, by="fecha") |>
+  group_by(fecha, siglas) |>
+  mutate(porcentaje= 100* votos_totales/candidatura_total) |>
+  distinct(siglas, .keep_all = TRUE) |>
+  select (c(Partidos:porcentaje))
+
+ejer11 <-
+  ejer11 |>
+  left_join(encuestas_tidy3, by="siglas") |>
+  group_by(fecha) |>
+  mutate(error= abs(porcentaje-Estimación)) |>
+  ungroup() |>
+  group_by(pollster, siglas) |>
+  summarise("MediaErrorPollster"=mean(error))
+
+ggplot(ejer11, aes(x= siglas, y= MediaErrorPollster, fill= MediaErrorPollster)) +
+  geom_col(alpha= 0.7, position='dodge') +
+  ggthemes::scale_fill_colorblind() +
+  theme_minimal() +
+  facet_wrap(~pollster) +
+  scale_fill_gradient2(low = "#60B64F", mid= "#FAFF5F", high = "#FF665F", midpoint = 2.5) +
+  theme(legend.position = "bottom") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+ejer11 |>
+  group_by(pollster) |>
+  summarise(error_medio= mean(MediaErrorPollster))
+```
+
+Para ver los niveles de error de las distintas casas encuestadoras se ha calculado el porcentaje estimado medio de cada pollster de cada partido en total de las dos elecciones. Para posteriormente compararlo con los valores reales asi como se ha hecho con el resto de apartados de los errores cometidos. Tras ello se ha realizado una grafica con los niveles de error de cada casa para partido además de su media. En cuanto a los errores medios de cada pollster se puede afirmar que tienen errores medios muy parecidos rondando el 3-4% de error.
+
+Pero se necesita estudiar más a profundidad por la presencia de como se ha mencionado anteriormente del apartado Otros. No se ha querido eliminar este columna en los distintos ejercicios para poder explicar que al existir muchos partidos en ese apartado existe mucha dispersión y es díficil que sus niveles de error sean bajos.
+
+Se observa como todos los gráficos carecen de esa exactitud en Otros, pero observamos que existen grandes candidatos a ser una gran aproximación. A nivel general, casi todas las pollsters pronosticaban un valor bastante más disociado de partidos como sobretodo Ciudadanos, aunque también con Unidas Podemos. A nivel regularidad IMOP consigue un error muy regular en casi todos los partidos, aunque también destacan SOCIOMÉTRICA, a pesar de su gran error con Ciudadanos, y Sigma Dos. Otras pollsters como el propio CIS, HAMALGAMA MÉTRICA tienen niveles de error mucho más altos.
